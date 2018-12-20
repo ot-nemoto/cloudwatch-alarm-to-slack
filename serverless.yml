@@ -1,0 +1,40 @@
+service: cloudwatch-alarm-to-slack
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: ap-northeast-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "ec2:DescribeInstances"
+      Resource: "*"
+  environment:
+    slack_path: # Webhook URL required. e.g.) '/services/T0P******/BEX******/yrk******************aHG'
+    tag_name: cloudwatch-alarm-to-slack-isenabled
+
+package:
+  exclude:
+    - README.md
+
+functions:
+  ec2event:
+    handler: services/ec2event.handler
+    environment:
+      template_path: 'templates/ec2.tpl'
+    events:
+      - cloudwatchEvent:
+          event:
+            source:
+              - "aws.ec2"
+            detail-type:
+              - "EC2 Instance State-change Notification"
+            detail:
+              state:
+                #- pending
+                - running
+                #- shutting-dwon
+                - stopped
+                #- stopping
+                #- terminated
