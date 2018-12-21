@@ -11,7 +11,7 @@ provider:
         - "ec2:DescribeInstances"
       Resource: "*"
   environment:
-    slack_path: # Webhook URL required. e.g.) '/services/T0P******/BEX******/yrk******************aHG'
+    slack_path: # Webhook URL required. e.g.) /services/T0P******/BEX******/yrk******************aHG
     tag_name: cloudwatch-alarm-to-slack-isenabled
 
 package:
@@ -19,10 +19,10 @@ package:
     - README.md
 
 functions:
-  ec2event:
-    handler: services/ec2event.handler
+  ec2:
+    handler: events/ec2.handler
     environment:
-      template_path: 'templates/ec2.tpl'
+      template_path: 'templates/events/ec2.tpl'
     events:
       - cloudwatchEvent:
           event:

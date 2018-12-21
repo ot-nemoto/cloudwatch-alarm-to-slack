@@ -1,11 +1,11 @@
 'use strict';
 
 const AWS = require('aws-sdk');
-const https = require('https');
-const fs = require('fs');
+const HTTPS = require('https');
+const FS = require('fs');
 
 function format(msg, obj) {
-  return msg.replace(/\{([\w|\|]+)\}/g, function (m, k) {
+  return msg.replace(/\{([\w|\||_|-]+)\}/g, function (m, k) {
     let rt = obj[k] || '';
     k.split('|').some(function(key) {
       if (key && obj[key]) { rt = obj[key]; return true; }
@@ -18,7 +18,13 @@ const EC2_URL = "https://{region}.console.aws.amazon.com/ec2/v2/home#Instances:i
 
 module.exports.handler = function(event, context) {
 
-  var instanceId = event.detail['instance-id'];
+  // event detail => template params
+  var templateParams = {};
+  Object.keys(event.detail).forEach(function(key) {
+    templateParams[key] = this[key];
+  }, event.detail);
+  
+  var instanceId = templateParams['instance-id'];
 
   var ec2 = new AWS.EC2();
   var tagName = process.env['tag_name'];
@@ -32,20 +38,17 @@ module.exports.handler = function(event, context) {
       console.log(err, err.stack);
     } else {
       if (!data.Reservations.length) return;
-      // Template Parameters
-      var templateParams = {};
+      // tags => template params
       data.Reservations[0].Instances[0].Tags.forEach(function(h) {
         templateParams[h.Key] = h.Value;
       });
       templateParams['url'] = format(EC2_URL, {region: event.region, instanceId: instanceId});
-      templateParams['instanceId'] = instanceId;
-      templateParams['state'] = event.detail.state;
       console.log(templateParams);
       
       // Slack Message
       let message = JSON.stringify(
         {
-          "text": format(fs.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
+          "text": format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
           "parse": "none"
         }
       );
@@ -61,7 +64,7 @@ module.exports.handler = function(event, context) {
         }
       };
 
-      let req = https.request(options, (res) => {
+      let req = HTTPS.request(options, (res) => {
         console.log('statusCode:', res.statusCode);
         console.log('headers:', res.headers);
         res.setEncoding('utf8');
