@@ -9,6 +9,7 @@ provider:
     - Effect: "Allow"
       Action:
         - "ec2:DescribeInstances"
+        - "codebuild:BatchGetProjects"
       Resource: "*"
   environment:
     slack_path: # Webhook URL required. e.g.) /services/T0P******/BEX******/yrk******************aHG
@@ -38,3 +39,20 @@ functions:
                 - stopped
                 #- stopping
                 #- terminated
+  codebuild:
+    handler: events/codebuild.handler
+    environment:
+      template_path: 'templates/events/codebuild.tpl'
+    events:
+      - cloudwatchEvent:
+          event:
+            source:
+              - "aws.codebuild"
+            detail-type:
+              - "CodeBuild Build State Change"
+            detail:
+              build-status:
+                - FAILED
+                - IN_PROGRESS
+                - STOPPED
+                - SUCCEEDED
