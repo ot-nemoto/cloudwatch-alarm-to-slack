@@ -1,5 +1,8 @@
 service: cloudwatch-alarm-to-slack
 
+custom:
+  config: ${file(./config.yml)}
+
 provider:
   name: aws
   runtime: nodejs8.10
@@ -10,14 +13,19 @@ provider:
       Action:
         - "ec2:DescribeInstances"
         - "codebuild:BatchGetProjects"
+        - "ecs:DescribeTaskDefinition"
       Resource: "*"
   environment:
-    slack_path: # Webhook URL required. e.g.) /services/T0P******/BEX******/yrk******************aHG
+    slack_path: ${self:custom.config.slack_path}
     tag_name: cloudwatch-alarm-to-slack-isenabled
 
 package:
   exclude:
     - README.md
+
+layers:
+  cloudWatchAlarmToSlack:
+    path: layer
 
 functions:
   ec2:
@@ -56,3 +64,16 @@ functions:
                 - IN_PROGRESS
                 - STOPPED
                 - SUCCEEDED
+  ecs:
+    handler: events/ecs.handler
+    layers:
+      - {Ref: CloudWatchAlarmToSlackLambdaLayer}
+    environment:
+      template_path: 'templates/events/ecs.tpl'
+    events:
+      - cloudwatchEvent:
+          event:
+            source:
+              - "aws.ecs"
+            detail-type:
+              - "ECS Task State Change"
