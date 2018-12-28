@@ -14,6 +14,7 @@ provider:
         - "ec2:DescribeInstances"
         - "codebuild:BatchGetProjects"
         - "ecs:DescribeTaskDefinition"
+        - "codepipeline:GetPipeline"
       Resource: "*"
   environment:
     slack_path: ${self:custom.config.slack_path}
@@ -22,6 +23,7 @@ provider:
 package:
   exclude:
     - README.md
+    - config.yml
 
 layers:
   cloudWatchAlarmToSlack:
@@ -77,3 +79,24 @@ functions:
               - "aws.ecs"
             detail-type:
               - "ECS Task State Change"
+  codepipeline:
+    handler: events/codepipeline.handler
+    layers:
+      - {Ref: CloudWatchAlarmToSlackLambdaLayer}
+    environment:
+      template_path: 'templates/events/codepipeline.tpl'
+    events:
+      - cloudwatchEvent:
+          event:
+            source:
+              - "aws.codepipeline"
+            detail-type:
+              - "CodePipeline Pipeline Execution State Change"
+            detail:
+              state:
+                - CANCELED
+                - FAILED
+                - RESUMED
+                - STARTED
+                - SUCCEEDED
+                - SUPERSEDED
