@@ -1,18 +1,10 @@
 'use strict';
 
+const template = require("./../utils/template");
+
 const AWS = require('aws-sdk');
 const HTTPS = require('https');
 const FS = require('fs');
-
-function format(msg, obj) {
-  return msg.replace(/\{([\w|\||_|-]+)\}/g, function (m, k) {
-    let rt = obj[k] || '';
-    k.split('|').some(function(key) {
-      if (key && obj[key]) { rt = obj[key]; return true; }
-    });
-    return rt;
-  });
-}
 
 const CODEPIPELINE_URL = "https://{region}.console.aws.amazon.com/codepipeline/home#/view/{pipeline}";
 const GITHUB_URL = "https://github.com/{owner}/{repo}/tree/{branch}";
@@ -21,12 +13,17 @@ const ECS_URL = "https://{region}.console.aws.amazon.com/ecs/home#/clusters/{clu
 
 module.exports.handler = function(event, context) {
 
-  // event detail => template params
   var templateParams = {};
+  // process.env
+  Object.keys(process.env).forEach(function(key) {
+    templateParams[key] = this[key];
+  }, process.env);
+  // event.detail
   Object.keys(event.detail).forEach(function(key) {
     templateParams[key] = this[key];
+    if (key == "state") templateParams["is_" + this[key]] = 1;
   }, event.detail);
-  templateParams['url'] = format(CODEPIPELINE_URL, { region: event.region, pipeline: templateParams['pipeline'] });
+  templateParams['url'] = template.format(CODEPIPELINE_URL, { region: event.region, pipeline: templateParams['pipeline'] });
 
   var codepipeline = new AWS.CodePipeline();
   
@@ -40,8 +37,8 @@ module.exports.handler = function(event, context) {
         stage.actions.forEach(function(action) {
           switch (action.actionTypeId.provider){
             case 'GitHub':
-              actions.push(format("<{url}|GitHub>", {
-                url: format(GITHUB_URL, {
+              actions.push(template.format("<{url}|GitHub>", {
+                url: template.format(GITHUB_URL, {
                   owner: action.configuration['Owner'],
                   repo: action.configuration['Repo'],
                   branch: action.configuration['Branch']
@@ -49,16 +46,16 @@ module.exports.handler = function(event, context) {
               }));
               break;
             case 'CodeBuild':
-              actions.push(format("<{url}|CodeBuild>", {
-                url: format(CODEBUILD_URL, {
+              actions.push(template.format("<{url}|CodeBuild>", {
+                url: template.format(CODEBUILD_URL, {
                   region: event.region,
                   projectName: action.configuration['ProjectName']
                 })
               }));
               break;
             case 'ECS':
-              actions.push(format("<{url}|ECS>", {
-                url: format(ECS_URL, {
+              actions.push(template.format("<{url}|ECS>", {
+                url: template.format(ECS_URL, {
                   region: event.region,
                   clusterName: action.configuration['ClusterName'],
                   serviceName: action.configuration['ServiceName']
@@ -67,7 +64,7 @@ module.exports.handler = function(event, context) {
               break;
           }
         });
-        stages.push(format("_{name}_ ( {actions} )", {
+        stages.push(template.format("_{name}_ ( {actions} )", {
           name: stage.name,
           actions: actions.join(" | ")
         }));
@@ -78,7 +75,7 @@ module.exports.handler = function(event, context) {
       // Slack Message
       let message = JSON.stringify(
         {
-          "text": format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
+          "text": template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
           "parse": "none"
         }
       );

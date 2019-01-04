@@ -41,9 +41,9 @@ serverless deploy
 - `templates/events/` 配下のテンプレートファイルを修正します。
 - `{}` でEC2インスタンス内の値に置換出来ます。
 - `{}` で指定できる値
-  - CloudWatchLogs で発行する event の detail 配下の値
-  - サービスに紐づくタグの値
-  - EC2, CodeBuild: `url`
-  - ECS: `task_url`, `task_definition_url`
-- `{}` に指定できる文字は半角英数＋アンスコ＋ハイフン。
+  - EC2: `instance-id`, `state`, `url` + Tags
+  - CodeBuild: `build-status`, `project-name`, `build-id`, `url` + Tags
+  - ECS: `clusterArn`, `cluster`, `lastStatus`, `taskArn`, `task`, `taskDefinitionArn`, `taskDefinition`, `task_url`, `task_definition_url` + Tags
+  - CodePipeline: `pipeline`, `execution-id`, `state`, `url`, `flow`, `is_<state>` + Process.env
 - `{aaa|bbb}` のようにパイプで区切ると、aaa がなければ bbb を参照。
+- `{!aaa|bbb}` のように感嘆符が先頭にある場合、aaa が存在すれば bbb を参照。
