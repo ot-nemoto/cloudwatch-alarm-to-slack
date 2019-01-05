@@ -1,6 +1,7 @@
 'use strict';
 
 const template = require("./../utils/template");
+const slack = require("./../utils/slack");
 
 const AWS = require('aws-sdk');
 const HTTPS = require('https');
@@ -14,15 +15,18 @@ const ECS_URL = "https://{region}.console.aws.amazon.com/ecs/home#/clusters/{clu
 module.exports.handler = function(event, context) {
 
   var templateParams = {};
+
   // process.env
   Object.keys(process.env).forEach(function(key) {
     templateParams[key] = this[key];
   }, process.env);
+
   // event.detail
   Object.keys(event.detail).forEach(function(key) {
     templateParams[key] = this[key];
     if (key == "state") templateParams["is_" + this[key]] = 1;
   }, event.detail);
+
   templateParams['url'] = template.format(CODEPIPELINE_URL, { region: event.region, pipeline: templateParams['pipeline'] });
 
   var codepipeline = new AWS.CodePipeline();
@@ -70,42 +74,13 @@ module.exports.handler = function(event, context) {
         }));
       });
       templateParams['flow'] = stages.join(" :arrow_right: ");
+
       console.log(templateParams);
 
-      // Slack Message
-      let message = JSON.stringify(
-        {
-          "text": template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
-          "parse": "none"
-        }
-      );
-
-      let options = {
-        hostname: 'hooks.slack.com',
-        port: 443,
-        path: process.env['slack_path'],
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(message)
-        }
-      };
-
-      let req = HTTPS.request(options, (res) => {
-        console.log('statusCode:', res.statusCode);
-        console.log('headers:', res.headers);
-        res.setEncoding('utf8');
-        res.on('data', (d) => {
-          console.log(d);
-        });
+      slack.request({
+        text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
+        parse: "none"
       });
-
-      req.on('error', (e) => {
-        console.error(e)
-      ;});
-
-      req.write(message);
-      req.end();
     }
   });
 };
