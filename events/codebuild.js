@@ -1,27 +1,26 @@
 'use strict';
 
-const AWS = require('aws-sdk');
-const HTTPS = require('https');
-const FS = require('fs');
+const template = require("./../utils/template");
+const slack = require("./../utils/slack");
 
-function format(msg, obj) {
-  return msg.replace(/\{([\w|\||_|-]+)\}/g, function (m, k) {
-    let rt = obj[k] || '';
-    k.split('|').some(function(key) {
-      if (key && obj[key]) { rt = obj[key]; return true; }
-    });
-    return rt;
-  });
-}
+const AWS = require('aws-sdk');
+const FS = require('fs');
 
 const URL = "https://{region}.console.aws.amazon.com/codesuite/codebuild/projects/{projectName}/build/{buildId}/log"
 
 module.exports.handler = function(event, context) {
 
-  // event detail => template params
   var templateParams = {};
+
+  // process.env
+  Object.keys(process.env).forEach(function(key) {
+    templateParams[key] = this[key];
+  }, process.env);
+
+  // event.detail
   Object.keys(event.detail).forEach(function(key) {
     templateParams[key] = this[key];
+    if (key == "build-status") templateParams["is_" + this[key]] = 1;
   }, event.detail);
 
   var projectName = templateParams['project-name'];
@@ -42,47 +41,18 @@ module.exports.handler = function(event, context) {
       });
       if (!templateParams[tagName] || !enabledValues.includes(templateParams[tagName])) return;
       // service url
-      templateParams['url'] = format(URL, {
+      templateParams['url'] = template.format(URL, {
         region: event.region,
         projectName: projectName,
         buildId: templateParams['build-id'].split('/')[1]
       });
+
       console.log(templateParams);
       
-      // Slack Message
-      let message = JSON.stringify(
-        {
-          "text": format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
-          "parse": "none"
-        }
-      );
-
-      let options = {
-        hostname: 'hooks.slack.com',
-        port: 443,
-        path: process.env['slack_path'],
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(message)
-        }
-      };
-
-      let req = HTTPS.request(options, (res) => {
-        console.log('statusCode:', res.statusCode);
-        console.log('headers:', res.headers);
-        res.setEncoding('utf8');
-        res.on('data', (d) => {
-          console.log(d);
-        });
+      slack.request({
+        text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
+        parse: "none"
       });
-
-      req.on('error', (e) => {
-        console.error(e)
-      ;});
-
-      req.write(message);
-      req.end();
     }
   });
 };

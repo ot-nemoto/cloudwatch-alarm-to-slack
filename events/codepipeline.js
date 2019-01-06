@@ -4,7 +4,6 @@ const template = require("./../utils/template");
 const slack = require("./../utils/slack");
 
 const AWS = require('aws-sdk');
-const HTTPS = require('https');
 const FS = require('fs');
 
 const CODEPIPELINE_URL = "https://{region}.console.aws.amazon.com/codepipeline/home#/view/{pipeline}";

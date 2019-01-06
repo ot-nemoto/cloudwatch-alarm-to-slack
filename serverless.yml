@@ -72,6 +72,8 @@ functions:
       - {Ref: CloudWatchAlarmToSlackLambdaLayer}
     environment:
       template_path: 'templates/events/ecs.tpl'
+      emoji_running: ":runner::runner:"
+      emoji_stopped: ":skull_and_crossbones:"
     events:
       - cloudwatchEvent:
           event:
@@ -87,6 +89,7 @@ functions:
       template_path: 'templates/events/codepipeline.tpl'
       emoji_started: ':seedling:'
       emoji_succeeded: ':rainbow::rainbow::rainbow:'
+      emoji_failed: ":sweat_drops:"
     events:
       - cloudwatchEvent:
           event:
