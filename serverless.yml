@@ -13,7 +13,8 @@ provider:
       Action:
         - "ec2:DescribeInstances"
         - "codebuild:BatchGetProjects"
-        - "ecs:DescribeTaskDefinition"
+        - "ecs:DescribeClusters"
+        - "ecs:ListTagsForResource"
         - "codepipeline:GetPipeline"
       Resource: "*"
   environment:

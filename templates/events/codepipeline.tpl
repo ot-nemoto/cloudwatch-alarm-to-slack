@@ -2,4 +2,4 @@
 ```
 execution_id: {execution-id}
 ```
-{flow}
+{!is_STARTED|flow}

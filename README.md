@@ -18,7 +18,7 @@
 ```sh
 aws codebuild update-project --name <projectName> --tags key=cloudwatch-alarm-to-slack-isenabled,value=1
 ```
-- ECSはタスク定義のタグに `cloudwatch-alarm-to-slack-isenabled` を設定。
+- ECSはクラスターのタグに `cloudwatch-alarm-to-slack-isenabled` を設定。
 - CodePipelineは現時点でタグの設定がないため、全てのCodePipelineイベントを拾う
 - 通知対象から外したい場合はタグを削除。またはタグの値に上記以外を設定。
 - 通知したいSlackでIncoming-webhookを有効にし、*Webhook URL* を発行。
