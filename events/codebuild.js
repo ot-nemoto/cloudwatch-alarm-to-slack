@@ -6,10 +6,15 @@ const slack = require("./../utils/slack");
 const AWS = require('aws-sdk');
 const FS = require('fs');
 
-const URL = "https://{region}.console.aws.amazon.com/codesuite/codebuild/projects/{projectName}/build/{buildId}/log"
+const URL = "https://{region}.console.aws.amazon.com/codesuite/codebuild/projects/{projectName}/build/{buildId}/log";
+
+const enabledValues = ['ON', 'On', 'on', 'TRUE', 'True', 'true', '1'];
 
 module.exports.handler = function(event, context) {
 
+  console.log(JSON.stringify(event));
+
+  var codebuild = new AWS.CodeBuild();
   var templateParams = {};
 
   // process.env
@@ -23,36 +28,30 @@ module.exports.handler = function(event, context) {
     if (key == "build-status") templateParams["is_" + this[key]] = 1;
   }, event.detail);
 
-  var projectName = templateParams['project-name'];
-
-  var codebuild = new AWS.CodeBuild();
-  var tagName = process.env['tag_name'];
-  var enabledValues = ['ON', 'On', 'on', 'TRUE', 'True', 'true', '1'];
-  var params = {names: [ `${projectName}` ]};
+  var params = {names: [ templateParams['project-name'] ]};
 
   codebuild.batchGetProjects(params, function(err, data) {
-    if (err) {
-      console.log(err, err.stack);
-    } else {
-      if (!data.projects.length) return;
-      // tags => template params
-      data.projects[0].tags.forEach(function(h) {
-        templateParams[h.key] = h.value;
-      });
-      if (!templateParams[tagName] || !enabledValues.includes(templateParams[tagName])) return;
-      // service url
-      templateParams['url'] = template.format(URL, {
-        region: event.region,
-        projectName: projectName,
-        buildId: templateParams['build-id'].split('/')[1]
-      });
+    if (err) { console.log(err, err.stack); return; }
+    if (!data.projects.length) return;
 
-      console.log(templateParams);
-      
-      slack.request({
-        text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
-        parse: "none"
-      });
-    }
+    // tags
+    data.projects[0].tags.forEach(function(h) {
+      templateParams[h.key] = h.value;
+    });
+    if (!templateParams[templateParams.tag_name] || !enabledValues.includes(templateParams[templateParams.tag_name])) return;
+
+    // url
+    templateParams['url'] = template.format(URL, {
+      region: event.region,
+      projectName: templateParams['project-name'],
+      buildId: templateParams['build-id'].split('/')[1]
+    });
+
+    console.log(templateParams);
+
+    slack.request({
+      text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
+      parse: "none"
+    });
   });
 };

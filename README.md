@@ -1,6 +1,6 @@
 # cloudwatch-alarm-to-slack
 
-### 概要
+## 概要
 
 - 各サービスのステータスが変わった際にSlackへ通知を行う。
 - デフォルトのリージョンは東京（ap-northeast-1）。
@@ -10,17 +10,39 @@
   - ECS: ECS Task State Change
   - CodePipeline: CodePipeline Pipeline Execution State Change (`CANCELED`, `FAILED`, `RESUMED`, `STARTED`, `SUCCEEDED`, `SUPERSEDED`)
 
-### 使い方
+## 使い方
 
-- 通知対象のEC2インスタンスに `cloudwatch-alarm-to-slack-isenabled` タグを設定。
+### 通知対象を設定
+
+#### EC2
+
+- EC2 > インスタンス > `Instance` > タグ
+- `cloudwatch-alarm-to-slack-isenabled` タグを設定。
 - タグの値には `ON`, `TRUE`, `1` の何れかを設定。
-- CodeBuildは現時点でマネージドコンソールからタグを付ける方法が不明なため、aws-cli で設定。
+
+#### CodeBuild
+
+- 現時点でマネージドコンソールからタグを付ける方法が不明なため、aws-cliで設定。
 ```sh
 aws codebuild update-project --name <projectName> --tags key=cloudwatch-alarm-to-slack-isenabled,value=1
 ```
-- ECSはクラスターのタグに `cloudwatch-alarm-to-slack-isenabled` を設定。
-- CodePipelineは現時点でタグの設定がないため、全てのCodePipelineイベントを拾う
+
+#### CodePipeline
+
+- 現時点でタグの設定がないため、全てのCodePipelineイベントを拾う
+
+#### ECS
+
+- ECS > クラスター > `cluster` > Tags
+- `cloudwatch-alarm-to-slack-isenabled` タグを設定。
+- タグの値には `ON`, `TRUE`, `1` の何れかを設定。
+
+---
+
 - 通知対象から外したい場合はタグを削除。またはタグの値に上記以外を設定。
+
+### 通知先のSlackの設定
+
 - 通知したいSlackでIncoming-webhookを有効にし、*Webhook URL* を発行。
 - 発行した *Webhook URL* を config.yml を作成し、`slack_path` に *Webhook URL* のホスト名以降（`/services/***/***/***`）の値を設定。
 
@@ -28,13 +50,15 @@ aws codebuild update-project --name <projectName> --tags key=cloudwatch-alarm-to
 echo 'slack_path: /services/***/***/***' > config.yml
 ```
 
-- デプロイ
+### デプロイ
 
 *serverless*
 ```sh
 (cd layer/nodejs; npm install)
 serverless deploy
 ```
+
+## その他
 
 ### Slackへの通知内容を変更したい
 

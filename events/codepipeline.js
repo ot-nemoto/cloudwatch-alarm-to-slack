@@ -13,6 +13,9 @@ const ECS_URL = "https://{region}.console.aws.amazon.com/ecs/home#/clusters/{clu
 
 module.exports.handler = function(event, context) {
 
+  console.log(JSON.stringify(event));
+
+  var codepipeline = new AWS.CodePipeline();
   var templateParams = {};
 
   // process.env
@@ -26,60 +29,58 @@ module.exports.handler = function(event, context) {
     if (key == "state") templateParams["is_" + this[key]] = 1;
   }, event.detail);
 
-  templateParams['url'] = template.format(CODEPIPELINE_URL, { region: event.region, pipeline: templateParams['pipeline'] });
+  // url
+  templateParams['url'] = template.format(CODEPIPELINE_URL, { region: event.region, pipeline: templateParams.pipeline });
 
-  var codepipeline = new AWS.CodePipeline();
-  
-  codepipeline.getPipeline({ name: templateParams['pipeline'], version: templateParams['version'] }, function(err, data) {
-    if (err) {
-      console.log(err, err.stack);
-    } else {
-      var stages = [];
-      data.pipeline.stages.forEach(function(stage) {
-        var actions = [];
-        stage.actions.forEach(function(action) {
-          switch (action.actionTypeId.provider){
-            case 'GitHub':
-              actions.push(template.format("<{url}|GitHub>", {
-                url: template.format(GITHUB_URL, {
-                  owner: action.configuration['Owner'],
-                  repo: action.configuration['Repo'],
-                  branch: action.configuration['Branch']
-                })
-              }));
-              break;
-            case 'CodeBuild':
-              actions.push(template.format("<{url}|CodeBuild>", {
-                url: template.format(CODEBUILD_URL, {
-                  region: event.region,
-                  projectName: action.configuration['ProjectName']
-                })
-              }));
-              break;
-            case 'ECS':
-              actions.push(template.format("<{url}|ECS>", {
-                url: template.format(ECS_URL, {
-                  region: event.region,
-                  clusterName: action.configuration['ClusterName'],
-                  serviceName: action.configuration['ServiceName']
-                })
-              }));
-              break;
-          }
-        });
-        stages.push(template.format("_{name}_ ( {actions} )", {
-          name: stage.name,
-          actions: actions.join(" | ")
-        }));
+  codepipeline.getPipeline({ name: templateParams.pipeline, version: templateParams.version }, function(err, data) {
+    if (err) { console.log(err, err.stack); return }
+
+    // flow
+    var stages = [];
+    data.pipeline.stages.forEach(function(stage) {
+      var actions = [];
+      stage.actions.forEach(function(action) {
+        switch (action.actionTypeId.provider){
+          case 'GitHub':
+            actions.push(template.format("<{url}|GitHub>", {
+              url: template.format(GITHUB_URL, {
+                owner: action.configuration['Owner'],
+                repo: action.configuration['Repo'],
+                branch: action.configuration['Branch']
+              })
+            }));
+            break;
+          case 'CodeBuild':
+            actions.push(template.format("<{url}|CodeBuild>", {
+              url: template.format(CODEBUILD_URL, {
+                region: event.region,
+                projectName: action.configuration['ProjectName']
+              })
+            }));
+            break;
+          case 'ECS':
+            actions.push(template.format("<{url}|ECS>", {
+              url: template.format(ECS_URL, {
+                region: event.region,
+                clusterName: action.configuration['ClusterName'],
+                serviceName: action.configuration['ServiceName']
+              })
+            }));
+            break;
+        }
       });
-      templateParams['flow'] = stages.join(" :arrow_right: ");
+      stages.push(template.format("_{name}_ ( {actions} )", {
+        name: stage.name,
+        actions: actions.join(" | ")
+      }));
+    });
+    templateParams['flow'] = stages.join(" :arrow_right: ");
 
-      console.log(templateParams);
+    console.log(templateParams);
 
-      slack.request({
-        text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
-        parse: "none"
-      });
-    }
+    slack.request({
+      text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
+      parse: "none"
+    });
   });
 };
