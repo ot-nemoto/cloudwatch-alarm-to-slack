@@ -47,7 +47,7 @@ module.exports.handler = function(event, context) {
       buildId: templateParams['build-id'].split('/')[1]
     });
 
-    console.log(templateParams);
+    console.log(JSON.stringify(templateParams));
 
     slack.request({
       text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),

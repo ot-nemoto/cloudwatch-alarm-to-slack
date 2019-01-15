@@ -76,7 +76,7 @@ module.exports.handler = function(event, context) {
     });
     templateParams['flow'] = stages.join(" :arrow_right: ");
 
-    console.log(templateParams);
+    console.log(JSON.stringify(templateParams));
 
     slack.request({
       text: template.format(FS.readFileSync(process.env['template_path'], {encoding: "utf-8"}), templateParams).trim(),
