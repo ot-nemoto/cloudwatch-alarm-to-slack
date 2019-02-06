@@ -22,10 +22,9 @@
 
 #### CodeBuild
 
-- 現時点でマネージドコンソールからタグを付ける方法が不明なため、aws-cliで設定。
-```sh
-aws codebuild update-project --name <projectName> --tags key=cloudwatch-alarm-to-slack-isenabled,value=1
-```
+- CodeBuild > ビルドプロジェクト > `Build Project` > ビルドの詳細 > プロジェクトの設定 > 編集
+- `cloudwatch-alarm-to-slack-isenabled` タグを設定。
+- タグの値には `ON`, `TRUE`, `1` の何れかを設定。
 
 #### CodePipeline
 
